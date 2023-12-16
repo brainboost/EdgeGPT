@@ -105,6 +105,8 @@ class Chatbot:
         locale: str = guess_locale(),
         simplify_response: bool = False,
         attachment: str | None = None,
+        mode: str = None,
+        no_search: bool = True,
     ) -> dict:
         """
         Ask a question to the bot
@@ -126,6 +128,8 @@ class Chatbot:
             search_result=search_result,
             locale=locale,
             attachment=attachment,
+            mode=mode,
+            no_search=no_search,
         ):
             if final:
                 if not simplify_response:
@@ -186,6 +190,8 @@ class Chatbot:
         search_result: bool = False,
         locale: str = guess_locale(),
         attachment: str | None = None,
+        mode: str = None,
+        no_search: bool = True,
     ) -> Generator[bool, dict | str, None]:
         """
         Ask a question to the bot
@@ -199,6 +205,8 @@ class Chatbot:
             search_result=search_result,
             locale=locale,
             attachment=attachment,
+            mode=mode,
+            no_search=no_search,
         ):
             yield response
 

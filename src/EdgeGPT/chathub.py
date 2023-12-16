@@ -87,6 +87,8 @@ class ChatHub:
         search_result: bool = False,
         locale: str = guess_locale(),
         attachment: Union[str, None] = None,
+        mode: str = None,
+        no_search: bool = True,
     ) -> Generator[bool, Union[dict, str], None]:
         """ """
         if self.request.encrypted_conversation_signature is not None:
@@ -115,6 +117,8 @@ class ChatHub:
             search_result=search_result,
             locale=locale,
             attachment_info=attachment_info,
+            mode=mode,
+            no_search=no_search,
         )
         # Send request
         await wss.send_str(append_identifier(self.request.struct))
@@ -145,12 +149,10 @@ class ChatHub:
                         "messages",
                     ):
                         if not draw:
-                            if (
-                                response["arguments"][0]["messages"][0].get(
-                                    "messageType",
-                                )
-                                == "GenerateContentQuery"
-                            ):
+                            msg_type = response["arguments"][0]["messages"][0].get(
+                                "messageType"
+                            )
+                            if msg_type == "GenerateContentQuery":
                                 try:
                                     async with ImageGenAsync(
                                         all_cookies=self.cookies,
@@ -182,70 +184,67 @@ class ChatHub:
                                 and not draw
                                 and not raw
                             ):
-                                resp_txt = result_text + response["arguments"][0][
-                                    "messages"
-                                ][0]["adaptiveCards"][0]["body"][0].get("text", "")
+                                body = response["arguments"][0]["messages"][0][
+                                    "adaptiveCards"
+                                ][0]["body"][0]
+                                resp_txt = result_text + body.get("text", "")
                                 resp_txt_no_link = result_text + response["arguments"][
                                     0
                                 ]["messages"][0].get("text", "")
-                            if response["arguments"][0]["messages"][0].get(
-                                "messageType",
-                            ):
-                                resp_txt = (
-                                    resp_txt
-                                    + response["arguments"][0]["messages"][0][
-                                        "adaptiveCards"
-                                    ][0]["body"][0]["inlines"][0].get("text")
-                                    + "\n"
-                                )
-                                result_text = (
-                                    result_text
-                                    + response["arguments"][0]["messages"][0][
-                                        "adaptiveCards"
-                                    ][0]["body"][0]["inlines"][0].get("text")
-                                    + "\n"
-                                )
+                                if msg_type and "inlines" in body:
+                                    resp_txt = (
+                                        resp_txt + body["inlines"][0].get("text") + "\n"
+                                    )
+                                    result_text = (
+                                        result_text
+                                        + response["arguments"][0]["messages"][0][
+                                            "adaptiveCards"
+                                        ][0]["body"][0]["inlines"][0].get("text")
+                                        + "\n"
+                                    )
                         if not raw:
                             yield False, resp_txt
 
-                    elif response.get("type") == 2:
-                        if response["item"]["result"].get("error"):
-                            await self.close()
-                            raise Exception(
-                                f"{response['item']['result']['value']}: {response['item']['result']['message']}",
-                            )
-                        if draw:
-                            cache = response["item"]["messages"][1]["adaptiveCards"][0][
-                                "body"
-                            ][0]["text"]
-                            response["item"]["messages"][1]["adaptiveCards"][0]["body"][
-                                0
-                            ]["text"] = cache + resp_txt
-                        if (
-                            response["item"]["messages"][-1]["contentOrigin"]
-                            == "Apology"
-                            and resp_txt
-                        ):
-                            response["item"]["messages"][-1]["text"] = resp_txt_no_link
-                            response["item"]["messages"][-1]["adaptiveCards"][0][
-                                "body"
-                            ][0]["text"] = resp_txt
-                            print(
-                                "Preserved the message from being deleted",
-                                file=sys.stderr,
-                            )
-                        await wss.close()
-                        if not self.aio_session.closed:
-                            await self.aio_session.close()
-                        yield True, response
-                        return
-                    if response.get("type") != 2:
-                        if response.get("type") == 6:
-                            await wss.send_str(append_identifier({"type": 6}))
-                        elif response.get("type") == 7:
-                            await wss.send_str(append_identifier({"type": 7}))
-                        elif raw:
-                            yield False, response
+                        elif response.get("type") == 2:
+                            if response["item"]["result"].get("error"):
+                                await self.close()
+                                raise Exception(
+                                    f"{response['item']['result']['value']}: {response['item']['result']['message']}",
+                                )
+                            if draw:
+                                cache = response["item"]["messages"][1][
+                                    "adaptiveCards"
+                                ][0]["body"][0]["text"]
+                                response["item"]["messages"][1]["adaptiveCards"][0][
+                                    "body"
+                                ][0]["text"] = cache + resp_txt
+                            if (
+                                response["item"]["messages"][-1]["contentOrigin"]
+                                == "Apology"
+                                and resp_txt
+                            ):
+                                response["item"]["messages"][-1][
+                                    "text"
+                                ] = resp_txt_no_link
+                                response["item"]["messages"][-1]["adaptiveCards"][0][
+                                    "body"
+                                ][0]["text"] = resp_txt
+                                print(
+                                    "Preserved the message from being deleted",
+                                    file=sys.stderr,
+                                )
+                            await wss.close()
+                            if not self.aio_session.closed:
+                                await self.aio_session.close()
+                            yield True, response
+                            return
+                        if response.get("type") != 2:
+                            if response.get("type") == 6:
+                                await wss.send_str(append_identifier({"type": 6}))
+                            elif response.get("type") == 7:
+                                await wss.send_str(append_identifier({"type": 7}))
+                            elif raw:
+                                yield False, response
                 except Exception as e:
                     print(e)
                     print(response)
@@ -287,7 +286,6 @@ class ChatHub:
 
     async def close(self) -> None:
         await self.session.aclose()
-        # await self.aio_session.close()
 
     def _build_upload_arguments(
         self, attachment: str, image_base64: bytes | None = None

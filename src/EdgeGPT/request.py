@@ -33,6 +33,8 @@ class ChatHubRequest:
         search_result: bool = False,
         locale: str = guess_locale(),
         attachment_info: dict | None = None,
+        mode: str = None,
+        no_search: bool = True,
     ) -> None:
         options = [
             "deepleo",
@@ -44,6 +46,13 @@ class ChatHubRequest:
             if not isinstance(conversation_style, ConversationStyle):
                 conversation_style = getattr(ConversationStyle, conversation_style)
             options = conversation_style.value
+        #enable gpt4_turbo
+        if mode == 'gpt4-turbo':
+            options.append('dlgpt4t')
+        
+        if no_search:
+            options.append('nosearchall')
+
         message_id = str(uuid.uuid4())
         # Get the current local time
         now_local = datetime.now()
@@ -92,26 +101,26 @@ class ChatHubRequest:
                     ],
                     "sliceIds": [
                         "winmuid1tf",
-                        "styleoff",
-                        "ccadesk",
-                        "smsrpsuppv4cf",
-                        "ssrrcache",
-                        "contansperf",
-                        "crchatrev",
-                        "winstmsg2tf",
-                        "creatgoglt",
-                        "creatorv2t",
-                        "sydconfigoptt",
-                        "adssqovroff",
-                        "530pstho",
-                        "517opinion",
-                        "418dhlth",
-                        "512sprtic1s0",
-                        "emsgpr",
-                        "525ptrcps0",
+                        "newmma-prod",
+                        "imgchatgptv2",
+                        "tts2",
+                        "voicelang2",
+                        "anssupfotest",
+                        "emptyoson",
+                        "tempcacheread",
+                        "temptacache",
+                        "ctrlworkpay",
+                        "winlongmsg2tf",
+                        "628fabocs0",
+                        "531rai268s0",
+                        "602refusal",
+                        "621alllocs0",
+                        "621docxfmtho",
+                        "621preclsvn",
+                        "330uaug",
                         "529rweas0",
-                        "515oscfing2s0",
-                        "524vidansgs0",
+                        "0626snptrcs0",
+                        "619dagslnv1nr"
                     ],
                     "verbosity": "verbose",
                     "traceId": get_ran_hex(32),
@@ -146,7 +155,7 @@ class ChatHubRequest:
             "target": "chat",
             "type": 4,
         }
-        if search_result:
+        if (not no_search) and (search_result):
             have_search_result = [
                 "InternalSearchQuery",
                 "InternalSearchResult",
