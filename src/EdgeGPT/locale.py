@@ -48,14 +48,14 @@ class LocationHint(Enum):
         "locale": "en-IE",
         "LocationHint": [
             {
-                "country": "Norway",
+                "country": "Ireland",
                 "state": "",
-                "city": "Oslo",
+                "city": "Dublin",
                 "timezoneoffset": 1,
                 "countryConfidence": 8,
                 "Center": {
-                    "Latitude": 59.9139,
-                    "Longitude": 10.7522,
+                    "Latitude": 53.2732,
+                    "Longitude": -6.2109,
                 },
                 "RegionType": 2,
                 "SourceType": 1,
