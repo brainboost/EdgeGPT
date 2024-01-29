@@ -2,11 +2,10 @@ import uuid
 from datetime import datetime
 from typing import Union
 
-from .conversation_style import CONVERSATION_STYLE_TYPE
-from .conversation_style import ConversationStyle
-from .utilities import get_location_hint_from_locale
-from .utilities import get_ran_hex
-from .utilities import guess_locale
+from .conversation_style import CONVERSATION_STYLE_TYPE, ConversationStyle
+from .utilities import get_location_hint_from_locale, get_ran_hex, guess_locale
+
+BING_BLOB_URL = "https://copilot.microsoft.com/images/blob?bcid="
 
 
 class ChatHubRequest:
@@ -33,6 +32,7 @@ class ChatHubRequest:
         webpage_context: Union[str, None] = None,
         search_result: bool = False,
         locale: str = guess_locale(),
+        attachment_info: dict | None = None,
     ) -> None:
         options = [
             "deepleo",
@@ -63,10 +63,17 @@ class ChatHubRequest:
 
         # Get current time
         timestamp = datetime.now().strftime("%Y-%m-%dT%H:%M:%S") + offset_string
+        image_url, original_image_url = None, None
+
+        if attachment_info:
+            image_url = BING_BLOB_URL + attachment_info["blobId"]
+            original_image_url = BING_BLOB_URL + attachment_info["blobId"]
+
         self.struct = {
             "arguments": [
                 {
                     "source": "cib",
+                    "scenario": "SERP",
                     "optionsSets": options,
                     "allowedMessageTypes": [
                         "ActionRequest",
@@ -121,8 +128,11 @@ class ChatHubRequest:
                         "messageType": "Chat",
                         "messageId": message_id,
                         "requestId": message_id,
+                        "imageUrl": image_url,
+                        "originalImageUrl": original_image_url,
                     },
                     "tone": conversation_style.name.capitalize(),  # Make first letter uppercase
+                    "spokenTextMode": "None",
                     "requestId": message_id,
                     "conversationSignature": self.conversation_signature,
                     "encryptedConversationSignature": self.encrypted_conversation_signature,

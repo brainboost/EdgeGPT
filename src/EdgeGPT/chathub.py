@@ -3,6 +3,8 @@ import json
 import os
 import ssl
 import sys
+import urllib.parse
+from base64 import b64encode
 from time import time
 from typing import Generator, List, Union
 
@@ -10,13 +12,12 @@ import aiohttp
 import certifi
 import httpx
 from BingImageCreator import ImageGenAsync
-import urllib.parse
 
-from .constants import DELIMITER, HEADERS, HEADERS_INIT_CONVER
+from .constants import DELIMITER, HEADERS, HEADERS_INIT_CONVER, KBLOB_HEADERS
 from .conversation import Conversation
 from .conversation_style import CONVERSATION_STYLE_TYPE
 from .request import ChatHubRequest
-from .utilities import append_identifier, guess_locale
+from .utilities import append_identifier, cookies_to_dict, guess_locale
 
 ssl_context = ssl.create_default_context()
 ssl_context.load_verify_locations(certifi.where())
@@ -35,7 +36,9 @@ class ChatHub:
         self.task: asyncio.Task
         self.request = ChatHubRequest(
             conversation_signature=conversation.struct["conversationSignature"],
-            encrypted_conversation_signature=conversation.struct["encryptedConversationSignature"],
+            encrypted_conversation_signature=conversation.struct[
+                "encryptedConversationSignature"
+            ],
             client_id=conversation.struct["clientId"],
             conversation_id=conversation.struct["conversationId"],
         )
@@ -57,7 +60,9 @@ class ChatHub:
             headers=HEADERS_INIT_CONVER,
         )
         if conversation.struct.get("encryptedConversationSignature"):
-            self.encrypted_conversation_signature = conversation.struct["encryptedConversationSignature"]
+            self.encrypted_conversation_signature = conversation.struct[
+                "encryptedConversationSignature"
+            ]
         else:
             self.encrypted_conversation_signature = None
 
@@ -81,16 +86,13 @@ class ChatHub:
         webpage_context: Union[str, None] = None,
         search_result: bool = False,
         locale: str = guess_locale(),
+        attachment: Union[str, None] = None,
     ) -> Generator[bool, Union[dict, str], None]:
         """ """
         if self.request.encrypted_conversation_signature is not None:
             wss_link = wss_link or "wss://sydney.bing.com/sydney/ChatHub"
             wss_link += f"?sec_access_token={urllib.parse.quote(self.request.encrypted_conversation_signature)}"
-        cookies = {}
-        if self.cookies is not None:
-            for cookie in self.cookies:
-                cookies[cookie["name"]] = cookie["value"]
-        self.aio_session = aiohttp.ClientSession(cookies=cookies)
+        self.aio_session = aiohttp.ClientSession(cookies=cookies_to_dict(self.cookies))
         # Check if websocket is closed
         wss = await self.aio_session.ws_connect(
             wss_link or "wss://sydney.bing.com/sydney/ChatHub",
@@ -100,6 +102,11 @@ class ChatHub:
             timeout=30.0,
         )
         await self._initial_handshake(wss)
+
+        attachment_info = None
+        if attachment:
+            attachment_info = await self._upload_attachment(attachment)
+
         # Construct a ChatHub request
         self.request.update(
             prompt=prompt,
@@ -107,6 +114,7 @@ class ChatHub:
             webpage_context=webpage_context,
             search_result=search_result,
             locale=locale,
+            attachment_info=attachment_info,
         )
         # Send request
         await wss.send_str(append_identifier(self.request.struct))
@@ -165,11 +173,12 @@ class ChatHub:
                                     ]
                                     != "Apology"
                                 )
-                            and
-                            (
-                                response["arguments"][0]["messages"][0].get("messageType")
-                                != "AdsQuery"
-                            )
+                                and (
+                                    response["arguments"][0]["messages"][0].get(
+                                        "messageType"
+                                    )
+                                    != "AdsQuery"
+                                )
                                 and not draw
                                 and not raw
                             ):
@@ -211,7 +220,7 @@ class ChatHub:
                             ][0]["text"]
                             response["item"]["messages"][1]["adaptiveCards"][0]["body"][
                                 0
-                            ]["text"] = (cache + resp_txt)
+                            ]["text"] = cache + resp_txt
                         if (
                             response["item"]["messages"][-1]["contentOrigin"]
                             == "Apology"
@@ -259,7 +268,8 @@ class ChatHub:
             conversation_signature or self.request.conversation_signature
         )
         encrypted_conversation_signature = (
-                encrypted_conversation_signature or self.request.encrypted_conversation_signature
+            encrypted_conversation_signature
+            or self.request.encrypted_conversation_signature
         )
         client_id = client_id or self.request.client_id
         url = "https://sydney.bing.com/sydney/DeleteSingleConversation"
@@ -278,3 +288,53 @@ class ChatHub:
     async def close(self) -> None:
         await self.session.aclose()
         # await self.aio_session.close()
+
+    def _build_upload_arguments(
+        self, attachment: str, image_base64: bytes | None = None
+    ) -> aiohttp.FormData:
+        data = aiohttp.FormData()
+        payload = {
+            "imageInfo": {"url": attachment},
+            "knowledgeRequest": {
+                "invokedSkills": ["ImageById"],
+                "subscriptionId": "Bing.Chat.Multimodal",
+                "invokedSkillsRequestData": {"enableFaceBlur": False},
+                "convoData": {
+                    "convoid": self.conversation_id,
+                    "convotone": str(self.conversation_style.value),
+                },
+            },
+        }
+        data.add_field(
+            "knowledgeRequest", json.dumps(payload), content_type="application/json"
+        )
+        if image_base64:
+            data.add_field(
+                "imageBase64", image_base64, content_type="application/octet-stream"
+            )
+        return data
+
+    async def upload_attachment(self, attachment: str) -> dict:
+        image_base64 = None
+        with open(attachment, "rb") as file:
+            image_base64 = b64encode(file.read())
+        use_proxy = self.proxy is None
+        session = aiohttp.ClientSession(
+            headers=KBLOB_HEADERS,
+            cookies=cookies_to_dict(self.cookies),
+            trust_env=use_proxy,
+            connector=aiohttp.TCPConnector(verify_ssl=False) if use_proxy else None,
+        )
+        data = self._build_upload_arguments(attachment, image_base64)
+        async with session.post(
+            "https://www.bing.com/images/kblob", data=data
+        ) as response:
+            if response.status != 200:
+                raise RuntimeError(
+                    f"Failed to upload image, received status: {response.status}"
+                )
+            response_dict = await response.json()
+            if not response_dict["blobId"] or len(response_dict["blobId"]) == 0:
+                raise RuntimeError("Failed to parse image info")
+        await session.close()
+        return response_dict

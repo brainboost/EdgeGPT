@@ -2,7 +2,7 @@ import json
 import locale
 import random
 import sys
-from typing import Union
+from typing import List, Union
 
 from .constants import DELIMITER
 from .locale import LocationHint
@@ -35,3 +35,12 @@ def guess_locale() -> str:
         return "en-us"
     loc, _ = locale.getlocale()
     return loc.replace("_", "-") if loc else "en-us"
+
+
+def cookies_to_dict(cookies: List[dict]) -> dict:
+    if cookies is None:
+        return None
+    all_cookies = {}
+    for cookie in cookies:
+        all_cookies[cookie["name"]] = cookie["value"]
+    return all_cookies
