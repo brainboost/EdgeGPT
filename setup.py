@@ -1,7 +1,6 @@
 from pathlib import Path
 
-from setuptools import find_packages
-from setuptools import setup
+from setuptools import find_packages, setup
 
 DOCS_PATH = Path(__file__).parents[0] / "docs/README.md"
 PATH = Path("README.md")
@@ -11,16 +10,16 @@ if not PATH.exists():
             f2.write(f1.read())
 
 setup(
-    name="EdgeGPT",
-    version="0.13.2",
+    name="EdgeGPT-plus",
+    version="0.13.3",
     license="The Unlicense",
-    author="Antonio Cheong",
+    author="Antonio Cheong + others",
     author_email="acheong@student.dalat.org",
     description="Reverse engineered Edge Chat API",
     packages=find_packages("src"),
     package_dir={"": "src"},
-    url="https://github.com/acheong08/EdgeGPT",
-    project_urls={"Bug Report": "https://github.com/acheong08/EdgeGPT/issues/new"},
+    url="https://github.com/brainboost/EdgeGPT",
+    project_urls={"Bug Report": "https://github.com/brainboost/EdgeGPT/issues/new"},
     entry_points={
         "console_scripts": [
             "edge-gpt = EdgeGPT.main:main",
