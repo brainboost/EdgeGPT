@@ -142,13 +142,19 @@ class Chatbot:
                 )
                 if messages_left == 0:
                     raise Exception("Max messages reached")
-                message = ""
+                message: dict | None = None
+                response_text = ""
                 for msg in reversed(response["item"]["messages"]):
-                    if msg.get("adaptiveCards") and msg["adaptiveCards"][0]["body"][
-                        0
-                    ].get("text"):
-                        message = msg
-                        break
+                    if msg.get("adaptiveCards"):
+                        body = msg["adaptiveCards"][0]["body"]
+                        for block in body:
+                            if (
+                                block.get("type") == "TextBlock"
+                            ):  # the first block could be type: Image
+                                response_text = block.get("text")
+                                if response_text:
+                                    message = msg
+                                    break
                 if not message:
                     raise Exception("No message found")
                 suggestions = [
@@ -156,12 +162,8 @@ class Chatbot:
                     for suggestion in message.get("suggestedResponses", [])
                 ]
                 adaptive_cards = message.get("adaptiveCards", [])
-                adaptive_text = (
-                    adaptive_cards[0]["body"][0].get("text") if adaptive_cards else None
-                )
-                sources = (
-                    adaptive_cards[0]["body"][0].get("text") if adaptive_cards else None
-                )
+                adaptive_text = response_text if adaptive_cards else None
+                sources = response_text if adaptive_cards else None
                 sources_text = (
                     adaptive_cards[0]["body"][-1].get("text")
                     if adaptive_cards

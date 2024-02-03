@@ -1,7 +1,8 @@
 aiohttp
-BingImageCreator
+BingImageCreator-plus
 certifi
 httpx
 prompt_toolkit
 requests
 rich
+Brotli

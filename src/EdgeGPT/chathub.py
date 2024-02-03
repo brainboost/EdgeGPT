@@ -12,6 +12,7 @@ import aiohttp
 import certifi
 import httpx
 from BingImageCreator import ImageGenAsync
+from curl_cffi import requests
 
 from .constants import DELIMITER, HEADERS, HEADERS_INIT_CONVER, KBLOB_HEADERS
 from .conversation import Conversation
@@ -91,6 +92,10 @@ class ChatHub:
         no_search: bool = True,
     ) -> Generator[bool, Union[dict, str], None]:
         """ """
+        attachment_info = None
+        if attachment:
+            attachment_info = await self.upload_attachment(attachment)
+
         if self.request.encrypted_conversation_signature is not None:
             wss_link = wss_link or "wss://sydney.bing.com/sydney/ChatHub"
             wss_link += f"?sec_access_token={urllib.parse.quote(self.request.encrypted_conversation_signature)}"
@@ -104,10 +109,6 @@ class ChatHub:
             timeout=30.0,
         )
         await self._initial_handshake(wss)
-
-        attachment_info = None
-        if attachment:
-            attachment_info = await self._upload_attachment(attachment)
 
         # Construct a ChatHub request
         self.request.update(
@@ -298,8 +299,8 @@ class ChatHub:
                 "subscriptionId": "Bing.Chat.Multimodal",
                 "invokedSkillsRequestData": {"enableFaceBlur": False},
                 "convoData": {
-                    "convoid": self.conversation_id,
-                    "convotone": str(self.conversation_style.value),
+                    "convoid": self.request.conversation_id,
+                    "convotone": "creative",
                 },
             },
         }

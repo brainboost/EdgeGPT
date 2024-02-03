@@ -16,9 +16,10 @@ async def async_main() -> None:
     )
     bot = await Chatbot.create(cookies=cookies)
     response = await bot.ask(
-        prompt="what parameters can be used in prompts with DALLE-3 in Bing Image Creator and for what purpose?",
+        prompt="please describe the picture",
         conversation_style=ConversationStyle.balanced,
-        simplify_response=True,
+        simplify_response=False,
+        attachment="C:\\Users\\Codete\\OneDrive\\Pictures\\Ffrc-8-XoAcItDo.jpg",
     )
     await bot.close()
     print(json.dumps(response, indent=2))

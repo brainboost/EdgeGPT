@@ -56,8 +56,12 @@ class Conversation:
             self.struct = response.json()
             print(self.struct)
             if self.struct.get("conversationSignature") is None:
-                self.struct["conversationSignature"] = response.headers["X-Sydney-Conversationsignature"]
-                self.struct["encryptedConversationSignature"] = response.headers["X-Sydney-Encryptedconversationsignature"]
+                self.struct["conversationSignature"] = response.headers[
+                    "X-Sydney-Conversationsignature"
+                ]
+                self.struct["encryptedConversationSignature"] = response.headers[
+                    "X-Sydney-Encryptedconversationsignature"
+                ]
         except (json.decoder.JSONDecodeError, NotAllowedToAccess) as exc:
             raise Exception(
                 "Authentication failed. You have not been accepted into the beta.",
@@ -94,7 +98,7 @@ class Conversation:
         if cookies:
             formatted_cookies = httpx.Cookies()
             for cookie in cookies:
-                if cookie["name"] in ["_U", "SUID"]:
+                if cookie["name"] in ["_U", "MUID"]:
                     formatted_cookies.set(cookie["name"], cookie["value"])
         async with httpx.AsyncClient(
             proxies=proxy,
@@ -117,8 +121,12 @@ class Conversation:
         try:
             self.struct = response.json()
             if self.struct.get("conversationSignature") is None:
-                self.struct["conversationSignature"] = response.headers["X-Sydney-Conversationsignature"]
-                self.struct["encryptedConversationSignature"] = response.headers["X-Sydney-Encryptedconversationsignature"]
+                self.struct["conversationSignature"] = response.headers[
+                    "X-Sydney-Conversationsignature"
+                ]
+                self.struct["encryptedConversationSignature"] = response.headers[
+                    "X-Sydney-Encryptedconversationsignature"
+                ]
         except (json.decoder.JSONDecodeError, NotAllowedToAccess) as exc:
             raise Exception(
                 "Authentication failed. You have not been accepted into the beta.",
