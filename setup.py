@@ -11,7 +11,7 @@ if not PATH.exists():
 
 setup(
     name="EdgeGPT-plus",
-    version="0.13.3",
+    version="0.13.4",
     license="The Unlicense",
     author="Antonio Cheong + others",
     author_email="acheong@student.dalat.org",

@@ -107,7 +107,7 @@ class ChatHub:
 
         attachment_info = None
         if attachment:
-            attachment_info = await self._upload_attachment(attachment)
+            attachment_info = await self.upload_attachment(attachment)
 
         # Construct a ChatHub request
         self.request.update(
@@ -298,8 +298,8 @@ class ChatHub:
                 "subscriptionId": "Bing.Chat.Multimodal",
                 "invokedSkillsRequestData": {"enableFaceBlur": False},
                 "convoData": {
-                    "convoid": self.conversation_id,
-                    "convotone": str(self.conversation_style.value),
+                    "convoid": self.request.conversation_id,
+                    "convotone": "creative",
                 },
             },
         }
